@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "*.toml": "toml",
+        "stdbool.h": "c",
+        "stdlib.h": "c",
+        "cmath": "c",
+        "stdio.h": "c"
+    },
+    "C_Cpp.default.compilerPath": "E:\\msys64\\ucrt64\\bin\\gcc.exe"
+}
