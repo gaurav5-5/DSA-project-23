@@ -7,6 +7,7 @@ Makefile
 cmake_install.cmake
 install_manifest.txt
 compile_commands.json
+merged_compile_commands.json
 CTestTestfile.cmake
 _deps
 
@@ -62,3 +63,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# clangd files
+.cache
+
+bin/
+build/
