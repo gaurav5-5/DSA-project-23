@@ -5,7 +5,7 @@ SRC=src\sfa.c
 EXT=.exe
 CFLAGS=-Wall -Werror -pedantic -Wextra -O2 -std=${CSTD}
 
-.PHONY: all build
+.PHONY: all build clean assembly clean_assembly
 
 all: build run
 
@@ -14,3 +14,6 @@ build: ${SRC}
 
 run: build
 	./sfa${EXT}
+
+assembly: 
+	${CC} -S -O0 -o ./sfa.s ${SRC}
