@@ -68,5 +68,9 @@ dkms.conf
 # clangd files
 .cache
 
-bin/
-build/
+bin/**
+build/**
+
+# ninja files
+.ninja_deps
+.ninja_log

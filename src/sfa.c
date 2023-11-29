@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <assert.h>
 
 /***********************************************
 |  * .-. .-. .-. .   .   .-. . . .-. .-. . .   |
@@ -22,19 +24,39 @@
 |  * 27 subnodes for storing words.            |
 ***********************************************/
 
-// boolean typing
-// 0 is falsy in C
-// values other than 0 are truthy
-#ifndef bool
-#define bool unsigned char
-#define true 1
-#define false 0
-#endif
-
 // macro for freeing pointer
 #define freeptr(_ptr)   \
     if ((_ptr) != NULL) \
         free((_ptr));
+
+
+
+int conv2index(char letter) {
+        
+        switch (letter)
+        {
+        // if case range labels are OK:
+        // case 'A' ... 'Z':
+        //     letter += 32;
+        // case 'a' ... 'z':
+        //     index = letter - 97;
+        //     break;
+
+        // default:
+        //     index = 26;
+        //     break;
+            
+        case '\'':
+            return 26;
+
+        default:
+            if(letter <= 'Z') letter += 32;
+            return (letter - 97);
+
+        }
+
+        return -1;
+}
 
 // structure definition for trie
 typedef struct trie_node
@@ -50,8 +72,14 @@ typedef struct trie_node
 tnode *trie_init()
 {
     tnode *new = (tnode *)calloc(1, sizeof(tnode));
+    assert(new != NULL);
+
+    // Set struct Values
     new->end = false;
-    new->letters = (tnode **)calloc(27, sizeof(tnode *)); // calloc to prevent garbage values
+    new->letters = (tnode **)malloc(27 * sizeof(tnode *));
+
+    // initialize garbage values to NULL
+    for(int i = 0; i < 27; i++) new->letters[i] = NULL;
 
     return new;
 }
@@ -64,34 +92,22 @@ tnode *trie_init()
 void str_to_tree(char *Word, tnode *Dictionary)
 {
 
-    tnode *current, *previous;
-    current = previous = Dictionary;
+    tnode *current = Dictionary;
     int index = 26;
+    int len = strlen(Word);
 
-    for (char *letter = Word; *letter != '\0'; letter++)
+    char letter;
+    for (int i = 0; i < len && ((letter = Word[i]) != '\0'); i++)
     {
+        index = conv2index(letter);
 
-        switch (*letter)
-        {
-        case '\'':
-            index = 26;
-            break;
-
-        default:
-            if (*letter <= 'Z')
-                *letter = ((char)((int)(*letter) + 32));
-            index = (*letter) - 97;
-            break;
-        }
         if (current->letters[index] == NULL)
         {
             current->letters[index] = trie_init();
         }
-        previous = current;
         current = current->letters[index];
     }
-    if (!previous->end)
-        previous->end = true;
+    current->end ^= true;
 }
 
 /** check spelling using trie
@@ -101,33 +117,24 @@ void str_to_tree(char *Word, tnode *Dictionary)
 bool checkspell(char *Word, tnode *Dictionary)
 {
 
-    tnode *previous, *current;
-    previous = current = Dictionary;
+    tnode *current;
+    current = Dictionary;
     int index = 26;
+    int len = strlen(Word);
 
-    for (char *letter = Word; *letter != '\0' && *letter != ' ' && *letter != '\n'; letter++)
+    // for (char *letter = Word; *letter != '\0' && *letter != ' ' && *letter != '\n'; letter++)
+    for(int i = 0; i < len; i++)
     {
 
-        previous = Dictionary;
-        switch (*letter)
-        {
-        case '\'':
-            index = 26;
-            break;
+        char letter = Word[i];
+        if(letter == '\0' || letter == ' ' || letter == '\n') break;
 
-        default:
-            if (*letter <= 'Z')
-                *letter = (char)((int)(*letter) + 32);
-            index = *letter - 97;
-            break;
-        }
+        index = conv2index(letter);
         current = current->letters[index];
         if (current == NULL)
             return false;
     }
-    if (!(previous->end))
-        return false;
-    return true;
+    return current->end;
 }
 
 bool checksentence(char *Sentence, tnode *Dictionary)
@@ -171,51 +178,43 @@ void free_trie(tnode **head)
  * +-------------------+
  */
 
-void file_to_trie(tnode **Dictionary)
+tnode *file_to_trie()
 {
 
-    tnode *new = trie_init();
+    tnode *new = trie_init(), *current;
+    current = new;
     FILE *dfile = fopen("./res/words.txt", "r");
-    // system("cd");
-    // assert(dfile);
+    // assert(dfile != NULL);
 
     char letter;
-    int index = 0;
-    char *word = (char *)malloc((0x64) * sizeof(char));
-    while (true)
+    int index;
+
+    while ((letter = fgetc(dfile)) != EOF)
     {
 
-        letter = getc(dfile);
-
-        /*
-         * Pressing the ENTER key on windows outputs 2 characters:
-         * '\r' -> Carriage Return [Bring cursor to start of line]
-         * '\n' -> New Line        [Go to Next line]
-         * This line is to fix any errors due to '\r'
-         */
-        if (letter == '\r')
-            continue;
-
-        if (letter == '\n' || letter == EOF)
+        switch (letter)
         {
-
-            word[index] = '\0';
-            str_to_tree(word, new);
-            index = -1;
-
-            if (letter == EOF)
-                break;
+        case '\n':
+            current->end = true;
+            current = new;
+            break;
+        
+        default:
+            index = conv2index(letter);
+            if(current->letters[index] == NULL)
+            {
+                current->letters[index] = trie_init();
+                current->letters[index]->end = false;
+            }
+            current = current->letters[index];
+            break;
         }
-        else
-            word[index] = letter;
-
-        index++;
     }
+    current->end = true;
     fclose(dfile);
-    freeptr(word);
+    current = NULL;
 
-    *Dictionary = new;
-    new = NULL;
+    return new;
 }
 
 /**
@@ -229,9 +228,10 @@ void file_to_trie(tnode **Dictionary)
  *  2-5 -> MENU CHOICE
  */
 
-// array to hold frames
+// Global Array to hold frames of UI
 static char frames[5][700];
 
+// Global string holding output from last executed command
 static char message[70];
 
 // initialize frames from res/ui.txt
@@ -297,39 +297,51 @@ void display_ui(int Frame)
 int main()
 {
 
-    printf("\033[?1049h");
     init_frames();
-    tnode *DICT = trie_init();
-    file_to_trie(&DICT);
+
+    tnode *DICT = file_to_trie();
+
     int opt = 0;
     bool res = false;
+    
+    // start alternative buffer
+    printf("\033[?1049h");
+    
     do
     {
         char buf[32];
-        // _flushall();
         display_ui(0);
         scanf("%d", &opt);
         display_ui(opt);
         switch (opt)
         {
         case 1:
+            fflush(stdin);
             scanf("%s", buf);
+
             str_to_tree(buf, DICT);
+
             strcpy(message, "\0");
             sprintf(message, "\033[32mSuccessfully added %s\033[0;0m", buf);
             break;
 
         case 2:
+            fflush(stdin);
             scanf("%s", buf);
+
             str_to_tree(buf, DICT);
+
             strcpy(message, "\0");
             sprintf(message, "\033[32mSuccessfully deleted %s\033[0;0m", buf);
             break;
 
         case 3:
+            fflush(stdin);
             scanf("%s", buf);
+
             res = checkspell(buf, DICT);
             strcpy(message, "\0");
+
             if (res)
                 sprintf(message, "\033[32m%s is Correct!!\033[0;0m", buf);
             else
@@ -339,20 +351,24 @@ int main()
         case 4:
             fflush(stdin);
             scanf("%[\n]%[^\n]", buf, buf);
+
             res = checksentence(buf, DICT);
             strcpy(message, "\0");
+            
             if (res)
-                sprintf(message, "\033[32mSentence is fully Correct!!\033[0;0m");
+                sprintf(message, "\033[32mSentence is spelled Correct!!\033[0;0m");
             else
-                sprintf(message, "\033[31mSentence has Wrong words!!\033[0;0m");
+                sprintf(message, "\033[31mSentence has Wrong spellings!!\033[0;0m");
             break;
 
         default:
             break;
         }
     } while (opt);
-    printf("\033[?1049h");
+    // close alternate buffer
+    printf("\033[?1049l");
 
+    // free up memor taken by trie
     free_trie(&DICT);
 
     return 0;
