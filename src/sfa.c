@@ -99,6 +99,8 @@ void str_to_tree(char *Word, tnode *Dictionary)
     char letter;
     for (int i = 0; i < len && ((letter = Word[i]) != '\0'); i++)
     {
+        if(letter == ' ' || letter == '.' || letter == ',') break;
+
         index = conv2index(letter);
 
         if (current->letters[index] == NULL)
@@ -107,7 +109,33 @@ void str_to_tree(char *Word, tnode *Dictionary)
         }
         current = current->letters[index];
     }
-    current->end ^= true;
+    current->end = true;
+}
+
+// Delete word from dicitionary
+// @param *Word word to remove
+// @param *Dictionary trie to delete from
+bool delete_from_trie(char *Word, tnode *Dictionary) 
+{
+    tnode *current = Dictionary;
+    int index = 26;
+    int len = strlen(Word);
+
+    char letter;
+    for(int i = 0; i < len && ((letter = Word[i]) != '\0'); i++) 
+    {
+        if(letter == ' ' || letter == '.' || letter == ',') break;
+
+        index = conv2index(letter);
+
+        // word does not exist
+        if(current->letters[index] == NULL) return false;
+        current = current->letters[index];
+    }
+    current->end = false;
+
+    // successful deletion
+    return true;
 }
 
 /** check spelling using trie
@@ -294,6 +322,52 @@ void display_ui(int Frame)
     printf("\033[u");
 }
 
+// Set Message
+// @param Key int
+// @param success bool
+// @param str char*
+void set_message(int Key, bool success, char *str) {
+    
+    // Clear str message
+    strcpy(message, "\0");
+
+    switch (Key)
+    {
+    case 1:
+        if(success) 
+            sprintf(message, "\033[32mSuccessfully added %s\033[0;0m", str);
+        else
+            sprintf(message, "\033[31mError in adding %s\033[0;0m", str);
+        break;
+
+    case 2:
+        if(success)
+            sprintf(message, "\033[32mSuccessfully deleted %s\033[0;0m", str);
+        else
+            sprintf(message, "\033[31m%s not in Dictionary\033[0;0m", str);
+        break;
+
+    case 3:
+        if (success)
+            sprintf(message, "\033[32m%s is Correct!!\033[0;0m", str);
+        else
+            sprintf(message, "\033[31m%s is Wrong!!\033[0;0m", str);
+        break;
+
+    case 4:            
+        if (success)
+            sprintf(message, "\033[32mSentence is spelled Correct!!\033[0;0m");
+        else
+            sprintf(message, "\033[31mSentence has Wrong spellings!!\033[0;0m");
+        break;
+
+    default:
+        sprintf(message, "\033[31mInvalid Choice!!\033[0;0m");
+        break;    
+    }
+
+}
+
 int main()
 {
 
@@ -309,66 +383,55 @@ int main()
     
     do
     {
-        char buf[32];
+        char buf[32],ch;
+        
         display_ui(0);
+        fflush(stdin);
         scanf("%d", &opt);
         display_ui(opt);
+        
+        fflush(stdin);
+        
         switch (opt)
         {
         case 1:
-            fflush(stdin);
             scanf("%s", buf);
-
             str_to_tree(buf, DICT);
-
-            strcpy(message, "\0");
-            sprintf(message, "\033[32mSuccessfully added %s\033[0;0m", buf);
+            if(checkspell(buf,DICT)) res = true;
+            else res = false;
             break;
 
         case 2:
-            fflush(stdin);
             scanf("%s", buf);
-
-            str_to_tree(buf, DICT);
-
-            strcpy(message, "\0");
-            sprintf(message, "\033[32mSuccessfully deleted %s\033[0;0m", buf);
+            res = delete_from_trie(buf, DICT);
             break;
 
         case 3:
-            fflush(stdin);
             scanf("%s", buf);
-
             res = checkspell(buf, DICT);
-            strcpy(message, "\0");
-
-            if (res)
-                sprintf(message, "\033[32m%s is Correct!!\033[0;0m", buf);
-            else
-                sprintf(message, "\033[31m%s is Wrong!!\033[0;0m", buf);
             break;
 
         case 4:
-            fflush(stdin);
-            scanf("%[\n]%[^\n]", buf, buf);
-
+            if((ch = fgetc(stdin)) != '\n') {
+                buf[0] = ch;
+                buf[1] = '\0';
+                scanf("%[^\n]", buf+1);
+            } else
+                scanf("%[^\n]", buf);
             res = checksentence(buf, DICT);
-            strcpy(message, "\0");
-            
-            if (res)
-                sprintf(message, "\033[32mSentence is spelled Correct!!\033[0;0m");
-            else
-                sprintf(message, "\033[31mSentence has Wrong spellings!!\033[0;0m");
             break;
 
         default:
             break;
         }
+        // set message line
+        set_message(opt,res,buf);
+
     } while (opt);
     // close alternate buffer
     printf("\033[?1049l");
 
-    // free up memor taken by trie
+    // free up memory taken by trie
     free_trie(&DICT);
 
     return 0;
