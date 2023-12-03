@@ -70,6 +70,7 @@ dkms.conf
 
 bin/**
 build/**
+.vscode/
 
 # ninja files
 .ninja_deps
